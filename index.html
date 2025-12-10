@@ -3,31 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Peringatan Banjir Rob Indonesia</title>
+    <title>Generator Peta Banjir Rob</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
     
     <style>
+        /* 1. WARNA LAUT DIATUR DI SINI (Background) */
         body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
-        #map { width: 100%; height: 100vh; }
+        #map { 
+            width: 100%; 
+            height: 100vh; 
+            background-color: #0d104f; /* Biru Tua sesuai request */
+        }
         
         .info-panel {
             padding: 15px;
-            background: white;
+            background: rgba(255, 255, 255, 0.9);
             position: absolute;
             top: 10px;
             right: 10px;
             z-index: 1000;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            max-width: 300px;
+            max-width: 250px;
+            max-height: 80vh;
+            overflow-y: auto;
         }
-        .legend {
-            font-size: 12px;
+        
+        /* Tombol Reset Pilihan */
+        .btn-reset {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
             margin-top: 10px;
-            color: #555;
+            width: 100%;
         }
     </style>
 </head>
@@ -36,16 +50,13 @@
     <div id="map"></div>
 
     <div class="info-panel">
-        <h3>🚨 Pantau Banjir Rob</h3>
-        <p>Klik wilayah di peta untuk simulasi status peringatan.</p>
+        <h3>🛠️ Generator Peta</h3>
+        <p style="font-size:12px">Klik wilayah untuk menandai (bisa lebih dari satu).</p>
         <hr>
-        <div id="status-wilayah">
-            <strong>Wilayah:</strong> - <br>
-            <strong>Status:</strong> -
+        <div id="list-wilayah">
+            <em>Belum ada wilayah dipilih</em>
         </div>
-        <div class="legend">
-            *Data ini hanya simulasi untuk ujicoba.
-        </div>
+        <button class="btn-reset" onclick="resetPeta()">Reset Semua</button>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -53,65 +64,96 @@
      crossorigin=""></script>
 
     <script>
-        // 1. Inisialisasi Peta
-        var map = L.map('map').setView([-2.5489, 118.0149], 5);
+        // --- 1. INISIALISASI PETA ---
+        // Kita matikan fitur zoom control default biar bersih saat di-screenshot
+        var map = L.map('map', {
+            zoomControl: false, 
+            attributionControl: false // Hilangkan tulisan Leaflet di pojok kanan bawah agar bersih
+        }).setView([-2.5489, 118.0149], 5);
 
-        // 2. Tambahkan Basemap
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '© OpenStreetMap contributors, © CARTO',
-            maxZoom: 19
-        }).addTo(map);
+        // PENTING: Kita TIDAK menambahkan L.tileLayer (Basemap)
+        // Agar "Luar Negeri" hilang dan lautnya bersih sesuai warna background CSS.
 
         var geojsonLayer;
+        var selectedLayers = []; // Array untuk menyimpan layer yang sedang dipilih
 
-        // 3. Style Default (Abu-abu)
+        // --- 2. STYLE DARATAN (HIJAU) ---
         function styleDefault(feature) {
             return {
-                fillColor: '#bdc3c7', 
-                weight: 1,
+                fillColor: '#56e37c', // Hijau request user
+                weight: 0.5,          // Garis batas tipis saja
                 opacity: 1,
-                color: 'white',
-                fillOpacity: 0.6
+                color: '#0d104f',     // Warna garis sama dengan laut (biar rapi) atau putih
+                fillOpacity: 1        // Solid, tidak transparan
             };
         }
 
-        // 4. Style Highlight (Merah - Tanda Bahaya)
+        // --- 3. STYLE TERPILIH (MERAH/WARNA LAIN) ---
+        // Ini warna daerah yang kena "Banjir" saat diklik
         function styleHighlight(feature) {
             return {
-                fillColor: '#e74c3c', // Merah Aler
-                weight: 2,
-                opacity: 1,
-                color: '#c0392b',
-                fillOpacity: 0.9
+                fillColor: '#ff0000', // Merah menyala
+                weight: 1,
+                color: 'white',       // Garis batas jadi putih biar jelas
+                fillOpacity: 1
             };
         }
 
-        // 5. Interaksi saat diklik
+        // --- 4. LOGIKA MULTI-SELECT ---
         function saatDiklik(e) {
             var layer = e.target;
-            var props = layer.feature.properties;
-
-            // Debugging: Cek nama kolom di Console browser
-            console.log("Data Atribut Wilayah Ini:", props);
-
-            // Reset style layer lain, highlight yang diklik
-            geojsonLayer.resetStyle();
-            layer.setStyle(styleHighlight());
-            layer.bringToFront();
-
-            // --- LOGIKA MENCARI NAMA WILAYAH ---
-            // Karena tiap data SHP punya nama kolom beda (misal: NAMOBJ, WADMKK, NAME_2, KABUPATEN)
-            // Script ini mencoba mencari mana yang ada isinya.
-            var namaDaerah = props.KABUPATEN || props.WADMKK || props.NAMOBJ || props.NAME_2 || props.kabupaten || "Nama tidak terdeteksi";
-            var kodeDaerah = props.ID || props.KODE || "-";
-
-            // Update Panel Info
-            var htmlInfo = "<strong>Wilayah:</strong> " + namaDaerah + "<br>" +
-                           "<span style='color:red; font-weight:bold'>Status: AWAS (Simulasi)</span>";
-            document.getElementById('status-wilayah').innerHTML = htmlInfo;
             
-            // Tampilkan Popup
-            layer.bindPopup("<b>" + namaDaerah + "</b><br>Potensi Banjir Rob: Tinggi").openPopup();
+            // Cek apakah layer ini sudah dipilih sebelumnya?
+            // Kita cek dari warna isiannya
+            var isSelected = layer.options.fillColor === '#ff0000'; // Cek apakah warnanya merah
+
+            if (isSelected) {
+                // Kalo sudah merah, klik lagi jadi hijau (Deselect)
+                geojsonLayer.resetStyle(layer);
+                // Hapus dari daftar list (Logic visual panel saja)
+                updatePanelInfo(layer, false);
+            } else {
+                // Kalo masih hijau, ubah jadi merah (Select)
+                layer.setStyle(styleHighlight());
+                layer.bringToFront(); // Bawa ke lapisan paling atas
+                // Tambah ke daftar list
+                updatePanelInfo(layer, true);
+            }
+        }
+
+        // Fungsi Update List di Panel Kanan
+        function updatePanelInfo(layer, isAdding) {
+            var props = layer.feature.properties;
+            // Deteksi nama kolom (seperti script sebelumnya)
+            var nama = props.KABUPATEN || props.WADMKK || props.NAMOBJ || props.NAME_2 || "Wilayah";
+            
+            var divList = document.getElementById('list-wilayah');
+            
+            // Logic sederhana: Hanya menampilkan jumlah atau list teks
+            // Biar gampang, kita refresh saja listnya berdasarkan layer yang merah
+            var totalMerah = 0;
+            var textList = "<ul>";
+            
+            geojsonLayer.eachLayer(function(l) {
+                if (l.options.fillColor === '#ff0000') {
+                    var n = l.feature.properties.KABUPATEN || l.feature.properties.WADMKK || l.feature.properties.NAMOBJ || "Wilayah";
+                    textList += "<li>" + n + "</li>";
+                    totalMerah++;
+                }
+            });
+            textList += "</ul>";
+
+            if (totalMerah === 0) {
+                divList.innerHTML = "<em>Belum ada wilayah dipilih</em>";
+            } else {
+                divList.innerHTML = "<strong>" + totalMerah + " Wilayah Terpilih:</strong>" + textList;
+            }
+        }
+
+        // Fungsi Reset Tombol
+        window.resetPeta = function() {
+            geojsonLayer.resetStyle();
+            document.getElementById('list-wilayah').innerHTML = "<em>Belum ada wilayah dipilih</em>";
         }
 
         function onEachFeature(feature, layer) {
@@ -120,30 +162,19 @@
             });
         }
 
-        // 6. Memuat File JSON
-        // PERHATIKAN: Nama file disesuaikan di sini
-        fetch('IdKabupaten.json') 
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("HTTP error " + response.status);
-                }
-                return response.json();
-            })
+        // --- 5. LOAD DATA ---
+        fetch('IdKabupaten.json')
+            .then(response => response.json())
             .then(data => {
                 geojsonLayer = L.geoJson(data, {
                     style: styleDefault,
                     onEachFeature: onEachFeature
                 }).addTo(map);
                 
-                // Zoom otomatis ke area data
                 map.fitBounds(geojsonLayer.getBounds());
             })
-            .catch(error => {
-                console.error("Error loading JSON:", error);
-                alert("Gagal memuat peta 'IdKabupaten.json'. Cek nama file di GitHub kamu (huruf besar/kecil berpengaruh)!");
-            });
+            .catch(error => console.error("Error:", error));
 
     </script>
 </body>
 </html>
-  
