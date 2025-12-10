@@ -10,39 +10,64 @@
      crossorigin=""/>
     
     <style>
-        /* 1. WARNA LAUT DIATUR DI SINI (Background) */
-        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* WARNA LAUT (Background) */
         #map { 
             width: 100%; 
             height: 100vh; 
-            background-color: #0d104f; /* Biru Tua sesuai request */
+            background-color: #3862eb; /* Biru Tua */
         }
         
         .info-panel {
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.95);
             position: absolute;
-            top: 10px;
-            right: 10px;
+            top: 20px;
+            right: 20px;
             z-index: 1000;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            max-width: 250px;
-            max-height: 80vh;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            width: 280px;
+            max-height: 90vh;
             overflow-y: auto;
         }
+
+        h3 { margin-top: 0; color: #0d104f; }
         
-        /* Tombol Reset Pilihan */
+        /* Style Input Tanggal */
+        .input-group { margin-bottom: 15px; }
+        label { font-size: 12px; font-weight: bold; color: #555; display: block; margin-bottom: 5px; }
+        input[type="date"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+            box-sizing: border-box; /* Agar padding gak bikin lebar */
+        }
+
+        /* Tombol Reset */
         .btn-reset {
             background: #e74c3c;
             color: white;
             border: none;
-            padding: 5px 10px;
+            padding: 8px 15px;
             cursor: pointer;
             border-radius: 4px;
-            margin-top: 10px;
             width: 100%;
+            font-weight: bold;
+            margin-top: 15px;
+            transition: 0.3s;
         }
+        .btn-reset:hover { background: #c0392b; }
+
+        .list-container {
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        .list-container ul { padding-left: 20px; margin: 5px 0; }
+        .list-container li { margin-bottom: 3px; }
     </style>
 </head>
 <body>
@@ -50,13 +75,21 @@
     <div id="map"></div>
 
     <div class="info-panel">
-        <h3>🛠️ Generator Peta</h3>
-        <p style="font-size:12px">Klik wilayah untuk menandai (bisa lebih dari satu).</p>
+        <h3>⚠️ Generator Peringatan</h3>
+        
+        <div class="input-group">
+            <label for="tanggal">Tanggal Berlaku:</label>
+            <input type="date" id="tanggal" onchange="updateTanggal()">
+        </div>
+
+        <p style="font-size:12px; color:#666;">Klik wilayah untuk menandai.</p>
         <hr>
-        <div id="list-wilayah">
+        
+        <div id="list-wilayah" class="list-container">
             <em>Belum ada wilayah dipilih</em>
         </div>
-        <button class="btn-reset" onclick="resetPeta()">Reset Semua</button>
+
+        <button class="btn-reset" onclick="resetPeta()">Reset Peta</button>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -64,116 +97,180 @@
      crossorigin=""></script>
 
     <script>
+        // --- KONFIGURASI ---
+        // Masukkan nama-nama wilayah luar negeri di sini (sesuai data atributmu)
+        // Contoh: "Malaysia", "Timor Leste", "Sabah". 
+        // Penulisan harus PERSIS sama dengan di data (huruf besar/kecil).
+        const DAFTAR_LUAR_NEGERI = ["Malaysia", "Brunai", "Timor Leste", "Papua New Guinea", "Singapura"]; 
+        
+        // Atur tanggal hari ini sebagai default input
+        document.getElementById('tanggal').valueAsDate = new Date();
+
+
         // --- 1. INISIALISASI PETA ---
-        // Kita matikan fitur zoom control default biar bersih saat di-screenshot
         var map = L.map('map', {
             zoomControl: false, 
-            attributionControl: false // Hilangkan tulisan Leaflet di pojok kanan bawah agar bersih
+            attributionControl: false 
         }).setView([-2.5489, 118.0149], 5);
 
-        // PENTING: Kita TIDAK menambahkan L.tileLayer (Basemap)
-        // Agar "Luar Negeri" hilang dan lautnya bersih sesuai warna background CSS.
-
         var geojsonLayer;
-        var selectedLayers = []; // Array untuk menyimpan layer yang sedang dipilih
+        var selectedNames = new Set(); // Menyimpan NAMA unik wilayah yang dipilih
 
-        // --- 2. STYLE DARATAN (HIJAU) ---
-        function styleDefault(feature) {
-            return {
-                fillColor: '#56e37c', // Hijau request user
-                weight: 0.5,          // Garis batas tipis saja
-                opacity: 1,
-                color: '#0d104f',     // Warna garis sama dengan laut (biar rapi) atau putih
-                fillOpacity: 1        // Solid, tidak transparan
-            };
+        // Helper: Ambil Nama Wilayah dari Feature
+        function getNamaWilayah(feature) {
+            var p = feature.properties;
+            // Urutan prioritas pengecekan nama kolom
+            return p.KABUPATEN || p.WADMKK || p.NAMOBJ || p.NAME_2 || p.Name || "Tanpa Nama";
         }
 
-        // --- 3. STYLE TERPILIH (MERAH/WARNA LAIN) ---
-        // Ini warna daerah yang kena "Banjir" saat diklik
-        function styleHighlight(feature) {
+        // Helper: Cek apakah ini Luar Negeri?
+        function isLuarNegeri(feature) {
+            var nama = getNamaWilayah(feature);
+            // Cek apakah nama wilayah ada di dalam daftar DAFTAR_LUAR_NEGERI
+            // Atau logic lain: misal ID-nya bukan format Indonesia
+            return DAFTAR_LUAR_NEGERI.includes(nama);
+        }
+
+
+        // --- 2. STYLE MANAGEMENT ---
+        
+        // Style Daratan Indonesia (Hijau)
+        function styleIndo(feature) {
             return {
-                fillColor: '#ff0000', // Merah menyala
-                weight: 1,
-                color: 'white',       // Garis batas jadi putih biar jelas
+                fillColor: '#56e37c', 
+                weight: 0.5,
+                color: '#0d104f',     
                 fillOpacity: 1
             };
         }
 
-        // --- 4. LOGIKA MULTI-SELECT ---
+        // Style Luar Negeri (Abu-abu)
+        function styleForeign(feature) {
+            return {
+                fillColor: '#adadb8', // Abu-abu request user
+                weight: 0.5,
+                color: '#0d104f',
+                fillOpacity: 1,
+                interactive: false // Biar gak bisa diklik
+            };
+        }
+
+        // Style Terpilih (Merah)
+        function styleSelected(feature) {
+            return {
+                fillColor: '#ff0000', 
+                weight: 1,
+                color: 'white',
+                fillOpacity: 1
+            };
+        }
+
+        // Fungsi Penentu Style Utama
+        function getStyle(feature) {
+            var nama = getNamaWilayah(feature);
+            
+            // 1. Cek dulu apakah ini Luar Negeri?
+            if (isLuarNegeri(feature)) {
+                return styleForeign(feature);
+            }
+
+            // 2. Cek apakah namanya ada di daftar yang dipilih (selectedNames)?
+            if (selectedNames.has(nama)) {
+                return styleSelected(feature);
+            }
+
+            // 3. Kalau bukan keduanya, berarti daratan Indonesia biasa
+            return styleIndo(feature);
+        }
+
+
+        // --- 3. LOGIKA KLIK & GROUP SELECT ---
+        
         function saatDiklik(e) {
             var layer = e.target;
-            
-            // Cek apakah layer ini sudah dipilih sebelumnya?
-            // Kita cek dari warna isiannya
-            var isSelected = layer.options.fillColor === '#ff0000'; // Cek apakah warnanya merah
+            var nama = getNamaWilayah(layer.feature);
 
-            if (isSelected) {
-                // Kalo sudah merah, klik lagi jadi hijau (Deselect)
-                geojsonLayer.resetStyle(layer);
-                // Hapus dari daftar list (Logic visual panel saja)
-                updatePanelInfo(layer, false);
+            // Toggle logic: Kalau sudah ada, hapus. Kalau belum, tambah.
+            if (selectedNames.has(nama)) {
+                selectedNames.delete(nama); // Deselect
             } else {
-                // Kalo masih hijau, ubah jadi merah (Select)
-                layer.setStyle(styleHighlight());
-                layer.bringToFront(); // Bawa ke lapisan paling atas
-                // Tambah ke daftar list
-                updatePanelInfo(layer, true);
+                selectedNames.add(nama);    // Select
             }
-        }
 
-        // Fungsi Update List di Panel Kanan
-        function updatePanelInfo(layer, isAdding) {
-            var props = layer.feature.properties;
-            // Deteksi nama kolom (seperti script sebelumnya)
-            var nama = props.KABUPATEN || props.WADMKK || props.NAMOBJ || props.NAME_2 || "Wilayah";
-            
-            var divList = document.getElementById('list-wilayah');
-            
-            // Logic sederhana: Hanya menampilkan jumlah atau list teks
-            // Biar gampang, kita refresh saja listnya berdasarkan layer yang merah
-            var totalMerah = 0;
-            var textList = "<ul>";
-            
+            // UPDATE SEMUA LAYER (Agar pulau-pulau kecil ikut berubah)
             geojsonLayer.eachLayer(function(l) {
-                if (l.options.fillColor === '#ff0000') {
-                    var n = l.feature.properties.KABUPATEN || l.feature.properties.WADMKK || l.feature.properties.NAMOBJ || "Wilayah";
-                    textList += "<li>" + n + "</li>";
-                    totalMerah++;
+                // Kita reset style layer ini berdasarkan logic getStyle terbaru
+                l.setStyle(getStyle(l.feature));
+                
+                // Jika terpilih, bawa ke depan
+                if (selectedNames.has(getNamaWilayah(l.feature))) {
+                    l.bringToFront();
                 }
             });
-            textList += "</ul>";
 
-            if (totalMerah === 0) {
+            // Update info panel
+            updatePanelList();
+        }
+
+        function updatePanelList() {
+            var divList = document.getElementById('list-wilayah');
+            var listHtml = "<ul>";
+            var count = 0;
+
+            // Loop Set selectedNames
+            selectedNames.forEach(function(nama) {
+                // Tambahkan kata "PESISIR" di depannya
+                listHtml += "<li><strong>PESISIR " + nama.toUpperCase() + "</strong></li>";
+                count++;
+            });
+            listHtml += "</ul>";
+
+            if (count === 0) {
                 divList.innerHTML = "<em>Belum ada wilayah dipilih</em>";
             } else {
-                divList.innerHTML = "<strong>" + totalMerah + " Wilayah Terpilih:</strong>" + textList;
+                divList.innerHTML = listHtml;
             }
         }
 
-        // Fungsi Reset Tombol
-        window.resetPeta = function() {
-            geojsonLayer.resetStyle();
-            document.getElementById('list-wilayah').innerHTML = "<em>Belum ada wilayah dipilih</em>";
-        }
+
+        // --- 4. DATA LOADING & EVENT ---
 
         function onEachFeature(feature, layer) {
-            layer.on({
-                click: saatDiklik
-            });
+            // Hanya aktifkan klik jika BUKAN luar negeri
+            if (!isLuarNegeri(feature)) {
+                layer.on({
+                    click: saatDiklik
+                });
+            }
         }
 
-        // --- 5. LOAD DATA ---
+        window.resetPeta = function() {
+            selectedNames.clear();
+            geojsonLayer.eachLayer(function(l) {
+                l.setStyle(getStyle(l.feature));
+            });
+            updatePanelList();
+        }
+        
+        // Fungsi placeholder tanggal (kalau mau dipakai untuk generate teks juga)
+        window.updateTanggal = function() {
+            console.log("Tanggal berubah:", document.getElementById('tanggal').value);
+        }
+
         fetch('IdKabupaten.json')
             .then(response => response.json())
             .then(data => {
                 geojsonLayer = L.geoJson(data, {
-                    style: styleDefault,
+                    style: getStyle, // Gunakan fungsi getStyle pintar tadi
                     onEachFeature: onEachFeature
                 }).addTo(map);
                 
                 map.fitBounds(geojsonLayer.getBounds());
             })
-            .catch(error => console.error("Error:", error));
+            .catch(error => {
+                console.error("Error:", error);
+                alert("Gagal load data. Pastikan IdKabupaten.json ada.");
+            });
 
     </script>
 </body>
