@@ -16,7 +16,7 @@
         #map { 
             width: 100%; 
             height: 100vh; 
-            background-color: #3862eb; /* Biru Tua */
+            background-color: #344680; /* Biru Tua */
         }
         
         .info-panel {
@@ -28,46 +28,77 @@
             z-index: 1000;
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            width: 280px;
+            width: 300px;
             max-height: 90vh;
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
 
-        h3 { margin-top: 0; color: #0d104f; }
+        h3 { margin-top: 0; color: #344680; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;}
         
-        /* Style Input Tanggal */
-        .input-group { margin-bottom: 15px; }
-        label { font-size: 12px; font-weight: bold; color: #555; display: block; margin-bottom: 5px; }
-        input[type="date"] {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-family: inherit;
-            box-sizing: border-box; /* Agar padding gak bikin lebar */
+        /* Style Input Search */
+        .search-group { margin-bottom: 15px; position: relative; }
+        .search-group label { font-size: 12px; font-weight: bold; color: #555; display: block; margin-bottom: 5px; }
+        input[type="text"] {
+            width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
         }
 
-        /* Tombol Reset */
-        .btn-reset {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            cursor: pointer;
-            border-radius: 4px;
-            width: 100%;
-            font-weight: bold;
-            margin-top: 15px;
-            transition: 0.3s;
+        /* Style Input Tanggal (Updated) */
+        .date-section {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+            margin-bottom: 15px;
         }
-        .btn-reset:hover { background: #c0392b; }
-
-        .list-container {
-            margin-top: 10px;
+        .date-label-main {
+            font-weight: bold; /* Sesuai Request */
+            font-size: 13px;
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .date-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
             font-size: 13px;
         }
+        .date-row span {
+            width: 60px; /* Lebar label 'Mulai =' */
+            color: #555;
+        }
+        .date-row input {
+            flex-grow: 1;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        /* Style Hasil Pencarian */
+        #search-results {
+            list-style: none; padding: 0; margin: 0; max-height: 150px; overflow-y: auto;
+            border: 1px solid #eee; border-top: none; display: none; background: white;
+            position: absolute; width: 100%; z-index: 1001; box-sizing: border-box;
+        }
+        #search-results li {
+            padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px;
+        }
+        #search-results li:hover { background-color: #f0f0f0; }
+
+        /* List Wilayah */
+        .list-wrapper {
+            flex-grow: 1; overflow-y: auto; margin-top: 5px; border-top: 1px solid #eee; padding-top: 10px;
+        }
+        .list-container { font-size: 13px; }
         .list-container ul { padding-left: 20px; margin: 5px 0; }
         .list-container li { margin-bottom: 3px; }
+
+        .btn-reset {
+            background: #e74c3c; color: white; border: none; padding: 10px; cursor: pointer;
+            border-radius: 4px; width: 100%; font-weight: bold; margin-top: 15px;
+        }
+        .btn-reset:hover { background: #c0392b; }
     </style>
 </head>
 <body>
@@ -77,16 +108,31 @@
     <div class="info-panel">
         <h3>⚠️ Generator Peringatan</h3>
         
-        <div class="input-group">
-            <label for="tanggal">Tanggal Berlaku:</label>
-            <input type="date" id="tanggal" onchange="updateTanggal()">
+        <div class="search-group">
+            <label for="search-box">Cari Wilayah:</label>
+            <input type="text" id="search-box" placeholder="Ketik nama kabupaten..." autocomplete="off">
+            <ul id="search-results"></ul>
         </div>
 
-        <p style="font-size:12px; color:#666;">Klik wilayah untuk menandai.</p>
-        <hr>
-        
-        <div id="list-wilayah" class="list-container">
-            <em>Belum ada wilayah dipilih</em>
+        <div class="date-section">
+            <label class="date-label-main">Tanggal berlaku</label>
+            
+            <div class="date-row">
+                <span>Mulai =</span>
+                <input type="date" id="tgl-mulai">
+            </div>
+            
+            <div class="date-row">
+                <span>Sampai =</span>
+                <input type="date" id="tgl-selesai">
+            </div>
+        </div>
+
+        <div class="list-wrapper">
+            <p style="font-size:12px; color:#666; margin-top:0;">Wilayah terpilih:</p>
+            <div id="list-wilayah" class="list-container">
+                <em>Belum ada wilayah dipilih</em>
+            </div>
         </div>
 
         <button class="btn-reset" onclick="resetPeta()">Reset Peta</button>
@@ -98,179 +144,206 @@
 
     <script>
         // --- KONFIGURASI ---
-        // Masukkan nama-nama wilayah luar negeri di sini (sesuai data atributmu)
-        // Contoh: "Malaysia", "Timor Leste", "Sabah". 
-        // Penulisan harus PERSIS sama dengan di data (huruf besar/kecil).
         const DAFTAR_LUAR_NEGERI = ["Malaysia", "Brunai", "Timor Leste", "Papua New Guinea", "Singapura"]; 
         
-        // Atur tanggal hari ini sebagai default input
-        document.getElementById('tanggal').valueAsDate = new Date();
+        // Set Default Tanggal (Hari ini dan Besok)
+        var today = new Date();
+        var tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
 
+        document.getElementById('tgl-mulai').valueAsDate = today;
+        document.getElementById('tgl-selesai').valueAsDate = tomorrow;
 
         // --- 1. INISIALISASI PETA ---
-        var map = L.map('map', {
-            zoomControl: false, 
-            attributionControl: false 
-        }).setView([-2.5489, 118.0149], 5);
-
+        var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([-2.5489, 118.0149], 5);
         var geojsonLayer;
-        var selectedNames = new Set(); // Menyimpan NAMA unik wilayah yang dipilih
+        var selectedNames = new Set();
+        var allFeaturesData = []; 
 
-        // Helper: Ambil Nama Wilayah dari Feature
+        // Helper: Ambil Nama
         function getNamaWilayah(feature) {
             var p = feature.properties;
-            // Urutan prioritas pengecekan nama kolom
-            return p.KABUPATEN || p.WADMKK || p.NAMOBJ || p.NAME_2 || p.Name || "Tanpa Nama";
+            // Cek berbagai kemungkinan nama kolom, jika tidak ada kembalikan "Tanpa Nama"
+            var nama = p.KABUPATEN || p.WADMKK || p.NAMOBJ || p.NAME_2 || p.Name;
+            
+            if (!nama || nama.trim() === "") {
+                return "Tanpa Nama";
+            }
+            return nama;
         }
 
-        // Helper: Cek apakah ini Luar Negeri?
+        // Helper: Cek Luar Negeri
         function isLuarNegeri(feature) {
             var nama = getNamaWilayah(feature);
-            // Cek apakah nama wilayah ada di dalam daftar DAFTAR_LUAR_NEGERI
-            // Atau logic lain: misal ID-nya bukan format Indonesia
             return DAFTAR_LUAR_NEGERI.includes(nama);
         }
-
 
         // --- 2. STYLE MANAGEMENT ---
         
         // Style Daratan Indonesia (Hijau)
         function styleIndo(feature) {
-            return {
-                fillColor: '#56e37c', 
-                weight: 0.5,
-                color: '#0d104f',     
-                fillOpacity: 1
-            };
+            return { fillColor: '#56e37c', weight: 0.5, color: '#0d104f', fillOpacity: 1 };
+        }
+        
+        // Style Luar Negeri (Abu-abu Tua #adadb8)
+        function styleForeign(feature) {
+            return { fillColor: '#adadb8', weight: 0.5, color: '#0d104f', fillOpacity: 1, interactive: false };
         }
 
-        // Style Luar Negeri (Abu-abu)
-        function styleForeign(feature) {
-            return {
-                fillColor: '#adadb8', // Abu-abu request user
-                weight: 0.5,
-                color: '#0d104f',
-                fillOpacity: 1,
-                interactive: false // Biar gak bisa diklik
-            };
+        // Style Tanpa Nama (Abu-abu Muda #bcc0cf) - NEW!
+        function styleNoName(feature) {
+            return { fillColor: '#bcc0cf', weight: 0.5, color: '#0d104f', fillOpacity: 1, interactive: false };
         }
 
         // Style Terpilih (Merah)
         function styleSelected(feature) {
-            return {
-                fillColor: '#ff0000', 
-                weight: 1,
-                color: 'white',
-                fillOpacity: 1
-            };
+            return { fillColor: '#ff0000', weight: 1, color: 'white', fillOpacity: 1 };
         }
 
-        // Fungsi Penentu Style Utama
+        // LOGIKA PENENTUAN WARNA
         function getStyle(feature) {
             var nama = getNamaWilayah(feature);
-            
-            // 1. Cek dulu apakah ini Luar Negeri?
-            if (isLuarNegeri(feature)) {
-                return styleForeign(feature);
-            }
 
-            // 2. Cek apakah namanya ada di daftar yang dipilih (selectedNames)?
-            if (selectedNames.has(nama)) {
-                return styleSelected(feature);
-            }
+            // 1. Cek Priority: Luar Negeri?
+            if (isLuarNegeri(feature)) return styleForeign(feature);
 
-            // 3. Kalau bukan keduanya, berarti daratan Indonesia biasa
+            // 2. Cek Priority: Apakah "Tanpa Nama"? (Data kosong)
+            if (nama === "Tanpa Nama") return styleNoName(feature);
+
+            // 3. Cek Priority: Apakah sedang dipilih user?
+            if (selectedNames.has(nama)) return styleSelected(feature);
+
+            // 4. Default: Daratan Indonesia
             return styleIndo(feature);
         }
 
-
-        // --- 3. LOGIKA KLIK & GROUP SELECT ---
+        // --- 3. INTERAKSI ---
         
-        function saatDiklik(e) {
-            var layer = e.target;
-            var nama = getNamaWilayah(layer.feature);
-
-            // Toggle logic: Kalau sudah ada, hapus. Kalau belum, tambah.
-            if (selectedNames.has(nama)) {
-                selectedNames.delete(nama); // Deselect
-            } else {
-                selectedNames.add(nama);    // Select
-            }
-
-            // UPDATE SEMUA LAYER (Agar pulau-pulau kecil ikut berubah)
+        function updateMapStyle() {
             geojsonLayer.eachLayer(function(l) {
-                // Kita reset style layer ini berdasarkan logic getStyle terbaru
                 l.setStyle(getStyle(l.feature));
-                
-                // Jika terpilih, bawa ke depan
                 if (selectedNames.has(getNamaWilayah(l.feature))) {
                     l.bringToFront();
                 }
             });
-
-            // Update info panel
             updatePanelList();
+        }
+
+        function toggleSelection(nama) {
+            if (nama === "Tanpa Nama") return; // Cegah error klik area kosong
+
+            if (selectedNames.has(nama)) {
+                selectedNames.delete(nama);
+            } else {
+                selectedNames.add(nama);
+            }
+            updateMapStyle();
+        }
+
+        function saatDiklik(e) {
+            var nama = getNamaWilayah(e.target.feature);
+            toggleSelection(nama);
         }
 
         function updatePanelList() {
             var divList = document.getElementById('list-wilayah');
             var listHtml = "<ul>";
             var count = 0;
+            
+            // Urutkan nama abjad
+            var sortedNames = Array.from(selectedNames).sort();
 
-            // Loop Set selectedNames
-            selectedNames.forEach(function(nama) {
-                // Tambahkan kata "PESISIR" di depannya
+            sortedNames.forEach(function(nama) {
                 listHtml += "<li><strong>PESISIR " + nama.toUpperCase() + "</strong></li>";
                 count++;
             });
             listHtml += "</ul>";
 
-            if (count === 0) {
-                divList.innerHTML = "<em>Belum ada wilayah dipilih</em>";
-            } else {
-                divList.innerHTML = listHtml;
-            }
+            divList.innerHTML = (count === 0) ? "<em>Belum ada wilayah dipilih</em>" : listHtml;
         }
 
+        // --- 4. FITUR SEARCH ---
+        var searchBox = document.getElementById('search-box');
+        var resultsBox = document.getElementById('search-results');
 
-        // --- 4. DATA LOADING & EVENT ---
+        searchBox.addEventListener('keyup', function(e) {
+            var keyword = e.target.value.toLowerCase();
+            resultsBox.innerHTML = "";
+            
+            if (keyword.length < 3) { 
+                resultsBox.style.display = 'none'; return;
+            }
 
-        function onEachFeature(feature, layer) {
-            // Hanya aktifkan klik jika BUKAN luar negeri
-            if (!isLuarNegeri(feature)) {
-                layer.on({
-                    click: saatDiklik
+            // Filter: Bukan Luar Negeri AND Bukan "Tanpa Nama"
+            var uniqueNames = [...new Set(allFeaturesData
+                .filter(f => !isLuarNegeri(f) && getNamaWilayah(f) !== "Tanpa Nama")
+                .map(f => getNamaWilayah(f)))];
+
+            var matches = uniqueNames.filter(name => name.toLowerCase().includes(keyword));
+
+            if (matches.length > 0) {
+                resultsBox.style.display = 'block';
+                matches.slice(0, 10).forEach(nama => { 
+                    var li = document.createElement('li');
+                    li.textContent = nama;
+                    li.onclick = function() { pilihDariSearch(nama); };
+                    resultsBox.appendChild(li);
                 });
+            } else {
+                resultsBox.style.display = 'none';
+            }
+        });
+
+        function pilihDariSearch(namaTarget) {
+            selectedNames.add(namaTarget);
+            updateMapStyle();
+
+            var groupBounds = L.latLngBounds([]);
+            var found = false;
+            geojsonLayer.eachLayer(function(layer) {
+                if (getNamaWilayah(layer.feature) === namaTarget) {
+                    groupBounds.extend(layer.getBounds());
+                    found = true;
+                }
+            });
+            if (found) { map.fitBounds(groupBounds, { padding: [50, 50] }); }
+            
+            searchBox.value = "";
+            resultsBox.style.display = 'none';
+        }
+        
+        document.addEventListener('click', function(e) {
+            if (e.target !== searchBox && e.target !== resultsBox) {
+                resultsBox.style.display = 'none';
+            }
+        });
+
+        // --- 5. LOAD DATA ---
+        function onEachFeature(feature, layer) {
+            var nama = getNamaWilayah(feature);
+            // Hanya bisa diklik jika BUKAN luar negeri dan BUKAN tanpa nama
+            if (!isLuarNegeri(feature) && nama !== "Tanpa Nama") {
+                layer.on({ click: saatDiklik });
             }
         }
 
         window.resetPeta = function() {
             selectedNames.clear();
-            geojsonLayer.eachLayer(function(l) {
-                l.setStyle(getStyle(l.feature));
-            });
-            updatePanelList();
-        }
-        
-        // Fungsi placeholder tanggal (kalau mau dipakai untuk generate teks juga)
-        window.updateTanggal = function() {
-            console.log("Tanggal berubah:", document.getElementById('tanggal').value);
+            updateMapStyle();
+            map.setView([-2.5489, 118.0149], 5);
         }
 
         fetch('IdKabupaten.json')
             .then(response => response.json())
             .then(data => {
+                allFeaturesData = data.features;
                 geojsonLayer = L.geoJson(data, {
-                    style: getStyle, // Gunakan fungsi getStyle pintar tadi
+                    style: getStyle,
                     onEachFeature: onEachFeature
                 }).addTo(map);
-                
                 map.fitBounds(geojsonLayer.getBounds());
             })
-            .catch(error => {
-                console.error("Error:", error);
-                alert("Gagal load data. Pastikan IdKabupaten.json ada.");
-            });
+            .catch(error => { console.error("Error:", error); alert("Gagal load data IdKabupaten.json"); });
 
     </script>
 </body>
