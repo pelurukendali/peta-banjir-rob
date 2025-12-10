@@ -3,263 +3,324 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generator Peta Banjir Rob</title>
+    <title>Generator Poster Banjir Rob</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
     
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #222; }
         
-        /* WARNA LAUT (Background) */
-        #map { 
-            width: 100%; 
-            height: 100vh; 
-            background-color: #344680; /* Biru Tua */
+        /* --- LAYOUT UTAMA --- */
+        .main-container {
+            display: flex;
+            height: 100vh;
         }
-        
-        .info-panel {
+
+        /* 1. PANEL KONTROL (KIRI) */
+        .control-panel {
+            width: 320px;
+            background: #f4f4f4;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            width: 300px;
-            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+            z-index: 20;
             display: flex;
             flex-direction: column;
         }
 
-        h3 { margin-top: 0; color: #344680; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;}
-        
-        /* Style Input Search */
-        .search-group { margin-bottom: 15px; position: relative; }
-        .search-group label { font-size: 12px; font-weight: bold; color: #555; display: block; margin-bottom: 5px; }
-        input[type="text"] {
-            width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
-        }
-
-        /* Style Input Tanggal (Updated) */
-        .date-section {
-            background: #f9f9f9;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #eee;
-            margin-bottom: 15px;
-        }
-        .date-label-main {
-            font-weight: bold; /* Sesuai Request */
-            font-size: 13px;
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-        }
-        .date-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 5px;
-            font-size: 13px;
-        }
-        .date-row span {
-            width: 60px; /* Lebar label 'Mulai =' */
-            color: #555;
-        }
-        .date-row input {
+        /* 2. AREA PREVIEW (KANAN) */
+        .preview-area {
             flex-grow: 1;
-            padding: 5px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #333; /* Background gelap biar fokus ke poster */
+            overflow: auto;
+            padding: 20px;
         }
 
-        /* Style Hasil Pencarian */
+        /* --- KANVAS POSTER (1080 x 1350 Ratio) --- */
+        /* Kita pakai teknik scaling CSS transform agar muat di layar laptop tapi aslinya HD */
+        #poster-canvas {
+            width: 540px;  /* Setengah dari 1080 (untuk preview) */
+            height: 675px; /* Setengah dari 1350 */
+            position: relative;
+            background-color: #0d104f; /* Warna Laut */
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            flex-shrink: 0;
+            border: 2px solid #fff;
+        }
+
+        /* Peta di dalam poster */
+        #map { 
+            width: 100%; 
+            height: 100%; 
+            background: transparent;
+        }
+
+        /* --- OVERLAY INFORMASI DI ATAS PETA --- */
+        .poster-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            pointer-events: none; /* Supaya klik tembus ke peta */
+            z-index: 999;
+        }
+
+        .poster-title {
+            font-size: 22px; /* Ukuran font disesuaikan preview */
+            font-weight: bold;
+            color: #0d104f;
+            margin: 0 0 10px 0;
+            text-transform: uppercase;
+            border-bottom: 3px solid #e74c3c;
+            padding-bottom: 10px;
+        }
+
+        .poster-info-row {
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #333;
+            line-height: 1.4;
+        }
+        .label-bold { font-weight: bold; color: #555; display: block;}
+
+        /* --- INPUT STYLES --- */
+        h3 { margin-top: 0; color: #0d104f; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .input-group { margin-bottom: 15px; }
+        label { font-size: 12px; font-weight: bold; color: #555; display: block; margin-bottom: 5px; }
+        input[type="text"], input[type="date"], select {
+            width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit;
+        }
+        
+        .row-inputs { display: flex; gap: 5px; }
+        
+        /* Hasil Search */
         #search-results {
-            list-style: none; padding: 0; margin: 0; max-height: 150px; overflow-y: auto;
-            border: 1px solid #eee; border-top: none; display: none; background: white;
-            position: absolute; width: 100%; z-index: 1001; box-sizing: border-box;
+            list-style: none; padding: 0; margin: 0; max-height: 100px; overflow-y: auto;
+            border: 1px solid #eee; display: none; background: white;
         }
-        #search-results li {
-            padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px;
-        }
-        #search-results li:hover { background-color: #f0f0f0; }
+        #search-results li { padding: 5px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px; }
+        #search-results li:hover { background: #f0f0f0; }
 
-        /* List Wilayah */
-        .list-wrapper {
-            flex-grow: 1; overflow-y: auto; margin-top: 5px; border-top: 1px solid #eee; padding-top: 10px;
-        }
-        .list-container { font-size: 13px; }
-        .list-container ul { padding-left: 20px; margin: 5px 0; }
-        .list-container li { margin-bottom: 3px; }
+        /* List Wilayah Kecil */
+        .mini-list { font-size: 11px; max-height: 100px; overflow-y: auto; border: 1px solid #eee; padding: 5px; margin-bottom: 10px;}
 
-        .btn-reset {
-            background: #e74c3c; color: white; border: none; padding: 10px; cursor: pointer;
-            border-radius: 4px; width: 100%; font-weight: bold; margin-top: 15px;
+        /* Tombol */
+        .btn {
+            border: none; padding: 10px; cursor: pointer; border-radius: 4px; width: 100%; font-weight: bold; color: white; margin-top: 5px;
         }
-        .btn-reset:hover { background: #c0392b; }
+        .btn-download { background: #27ae60; margin-top: 20px; font-size: 16px; }
+        .btn-download:hover { background: #2ecc71; }
+        .btn-reset { background: #e74c3c; }
+
+        /* Credits footer di poster */
+        .poster-footer {
+            position: absolute; bottom: 10px; right: 15px; color: rgba(255,255,255,0.7); font-size: 10px; z-index: 999;
+        }
+
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
+<div class="main-container">
+    
+    <div class="control-panel">
+        <h3>🛠️ Konfigurasi Data</h3>
 
-    <div class="info-panel">
-        <h3>⚠️ Generator Peringatan</h3>
-        
-        <div class="search-group">
-            <label for="search-box">Cari Wilayah:</label>
+        <div class="input-group">
+            <label>Cari Wilayah:</label>
             <input type="text" id="search-box" placeholder="Ketik nama kabupaten..." autocomplete="off">
             <ul id="search-results"></ul>
         </div>
 
-        <div class="date-section">
-            <label class="date-label-main">Tanggal berlaku</label>
-            
-            <div class="date-row">
-                <span>Mulai =</span>
-                <input type="date" id="tgl-mulai">
-            </div>
-            
-            <div class="date-row">
-                <span>Sampai =</span>
-                <input type="date" id="tgl-selesai">
+        <div class="input-group">
+            <label>Tanggal Peringatan (Mulai - Selesai):</label>
+            <div class="row-inputs">
+                <input type="date" id="tgl-mulai" onchange="updatePosterText()">
+                <input type="date" id="tgl-selesai" onchange="updatePosterText()">
             </div>
         </div>
 
-        <div class="list-wrapper">
-            <p style="font-size:12px; color:#666; margin-top:0;">Wilayah terpilih:</p>
-            <div id="list-wilayah" class="list-container">
-                <em>Belum ada wilayah dipilih</em>
+        <div class="input-group">
+            <label>Fenomena Penyebab:</label>
+            <input type="text" id="fenomena-1" placeholder="Cth: Fase Bulan Baru" oninput="updatePosterText()">
+            
+            <div class="row-inputs" style="margin-top:5px; margin-bottom:5px;">
+                <select id="logic-fenomena" onchange="updatePosterText()">
+                    <option value="dan">dan</option>
+                    <option value="atau">atau</option>
+                    <option value="dan/atau">dan/atau</option>
+                </select>
             </div>
+
+            <input type="text" id="fenomena-2" placeholder="Cth: Perigee (Opsional)" oninput="updatePosterText()">
         </div>
 
-        <button class="btn-reset" onclick="resetPeta()">Reset Peta</button>
+        <div class="input-group">
+            <label>Waktu Kejadian Fenomena:</label>
+            <input type="text" id="waktu-fenomena" placeholder="Cth: 13 Januari 2025" oninput="updatePosterText()">
+        </div>
+
+        <label>Wilayah Terpilih:</label>
+        <div id="list-wilayah" class="mini-list"><em>Belum ada</em></div>
+        <button class="btn btn-reset" onclick="resetPeta()">Reset Peta</button>
+
+        <hr>
+        <button class="btn btn-download" onclick="downloadImage()">💾 Download PNG (HD)</button>
+        <small style="text-align:center; display:block; margin-top:5px; color:#888;">Ukuran output: 1080 x 1350 px</small>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-     crossorigin=""></script>
+    <div class="preview-area">
+        <div id="poster-canvas">
+            
+            <div class="poster-overlay">
+                <div class="poster-title">Informasi Potensi Banjir Pesisir (Rob)</div>
+                
+                <div class="poster-info-row">
+                    <span class="label-bold">Waktu Peringatan:</span>
+                    <span id="text-waktu-range">-</span>
+                </div>
+
+                <div class="poster-info-row">
+                    <span class="label-bold">Fenomena:</span>
+                    <span id="text-fenomena">-</span>
+                </div>
+
+                <div class="poster-info-row">
+                    <span class="label-bold">Waktu Fenomena:</span>
+                    <span id="text-waktu-kejadian">-</span>
+                </div>
+            </div>
+
+            <div class="poster-footer">Generated by WebGIS Banjir Rob</div>
+
+            <div id="map"></div>
+        </div>
+    </div>
+
+</div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
     <script>
         // --- KONFIGURASI ---
         const DAFTAR_LUAR_NEGERI = ["Malaysia", "Brunai", "Timor Leste", "Papua New Guinea", "Singapura"]; 
         
-        // Set Default Tanggal (Hari ini dan Besok)
+        // --- SETUP TANGGAL DEFAULT ---
         var today = new Date();
-        var tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
+        var tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
         document.getElementById('tgl-mulai').valueAsDate = today;
         document.getElementById('tgl-selesai').valueAsDate = tomorrow;
 
         // --- 1. INISIALISASI PETA ---
-        var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([-2.5489, 118.0149], 5);
+        var map = L.map('map', { 
+            zoomControl: false, 
+            attributionControl: false,
+            zoomSnap: 0.1 // Biar zoom lebih halus saat fitBounds
+        }).setView([-2.5489, 118.0149], 5);
+
         var geojsonLayer;
         var selectedNames = new Set();
         var allFeaturesData = []; 
 
-        // Helper: Ambil Nama
         function getNamaWilayah(feature) {
             var p = feature.properties;
-            // Cek berbagai kemungkinan nama kolom, jika tidak ada kembalikan "Tanpa Nama"
             var nama = p.KABUPATEN || p.WADMKK || p.NAMOBJ || p.NAME_2 || p.Name;
-            
-            if (!nama || nama.trim() === "") {
-                return "Tanpa Nama";
-            }
-            return nama;
+            return (!nama || nama.trim() === "") ? "Tanpa Nama" : nama;
         }
 
-        // Helper: Cek Luar Negeri
         function isLuarNegeri(feature) {
-            var nama = getNamaWilayah(feature);
-            return DAFTAR_LUAR_NEGERI.includes(nama);
+            return DAFTAR_LUAR_NEGERI.includes(getNamaWilayah(feature));
         }
 
         // --- 2. STYLE MANAGEMENT ---
-        
-        // Style Daratan Indonesia (Hijau)
-        function styleIndo(feature) {
-            return { fillColor: '#56e37c', weight: 0.5, color: '#0d104f', fillOpacity: 1 };
-        }
-        
-        // Style Luar Negeri (Abu-abu Tua #adadb8)
-        function styleForeign(feature) {
-            return { fillColor: '#adadb8', weight: 0.5, color: '#0d104f', fillOpacity: 1, interactive: false };
-        }
+        function styleIndo(feature) { return { fillColor: '#56e37c', weight: 0.5, color: '#0d104f', fillOpacity: 1 }; }
+        function styleForeign(feature) { return { fillColor: '#adadb8', weight: 0.5, color: '#0d104f', fillOpacity: 1, interactive: false }; }
+        function styleNoName(feature) { return { fillColor: '#bcc0cf', weight: 0.5, color: '#0d104f', fillOpacity: 1, interactive: false }; }
+        function styleSelected(feature) { return { fillColor: '#ff0000', weight: 1.5, color: 'white', fillOpacity: 1 }; }
 
-        // Style Tanpa Nama (Abu-abu Muda #bcc0cf) - NEW!
-        function styleNoName(feature) {
-            return { fillColor: '#bcc0cf', weight: 0.5, color: '#0d104f', fillOpacity: 1, interactive: false };
-        }
-
-        // Style Terpilih (Merah)
-        function styleSelected(feature) {
-            return { fillColor: '#ff0000', weight: 1, color: 'white', fillOpacity: 1 };
-        }
-
-        // LOGIKA PENENTUAN WARNA
         function getStyle(feature) {
             var nama = getNamaWilayah(feature);
-
-            // 1. Cek Priority: Luar Negeri?
             if (isLuarNegeri(feature)) return styleForeign(feature);
-
-            // 2. Cek Priority: Apakah "Tanpa Nama"? (Data kosong)
             if (nama === "Tanpa Nama") return styleNoName(feature);
-
-            // 3. Cek Priority: Apakah sedang dipilih user?
             if (selectedNames.has(nama)) return styleSelected(feature);
-
-            // 4. Default: Daratan Indonesia
             return styleIndo(feature);
         }
 
-        // --- 3. INTERAKSI ---
+        // --- 3. INTERAKSI & UPDATE TEXT ---
         
+        // Fungsi update teks di dalam Poster secara real-time
+        function updatePosterText() {
+            // 1. Tanggal Range
+            var tgl1 = document.getElementById('tgl-mulai').value;
+            var tgl2 = document.getElementById('tgl-selesai').value;
+            document.getElementById('text-waktu-range').innerText = `Tanggal ${formatTanggal(tgl1)} - ${formatTanggal(tgl2)}`;
+
+            // 2. Fenomena (Logic Dan/Atau)
+            var f1 = document.getElementById('fenomena-1').value;
+            var f2 = document.getElementById('fenomena-2').value;
+            var logic = document.getElementById('logic-fenomena').value;
+            
+            var textFen = f1;
+            if (f2 && f2.trim() !== "") {
+                textFen += ` ${logic} ${f2}`;
+            }
+            document.getElementById('text-fenomena').innerText = textFen || "-";
+
+            // 3. Waktu Fenomena
+            var wf = document.getElementById('waktu-fenomena').value;
+            document.getElementById('text-waktu-kejadian').innerText = wf ? `Pada tanggal ${wf}` : "-";
+        }
+
+        function formatTanggal(dateString) {
+            if(!dateString) return "...";
+            var date = new Date(dateString);
+            var options = { day: 'numeric', month: 'long', year: 'numeric' };
+            return date.toLocaleDateString('id-ID', options);
+        }
+
+        // Trigger pertama kali
+        updatePosterText();
+
+
         function updateMapStyle() {
             geojsonLayer.eachLayer(function(l) {
                 l.setStyle(getStyle(l.feature));
-                if (selectedNames.has(getNamaWilayah(l.feature))) {
-                    l.bringToFront();
-                }
+                if (selectedNames.has(getNamaWilayah(l.feature))) { l.bringToFront(); }
             });
             updatePanelList();
         }
 
         function toggleSelection(nama) {
-            if (nama === "Tanpa Nama") return; // Cegah error klik area kosong
-
-            if (selectedNames.has(nama)) {
-                selectedNames.delete(nama);
-            } else {
-                selectedNames.add(nama);
-            }
+            if (nama === "Tanpa Nama") return;
+            selectedNames.has(nama) ? selectedNames.delete(nama) : selectedNames.add(nama);
             updateMapStyle();
         }
 
         function saatDiklik(e) {
-            var nama = getNamaWilayah(e.target.feature);
-            toggleSelection(nama);
+            toggleSelection(getNamaWilayah(e.target.feature));
         }
 
         function updatePanelList() {
             var divList = document.getElementById('list-wilayah');
             var listHtml = "<ul>";
             var count = 0;
-            
-            // Urutkan nama abjad
-            var sortedNames = Array.from(selectedNames).sort();
-
-            sortedNames.forEach(function(nama) {
-                listHtml += "<li><strong>PESISIR " + nama.toUpperCase() + "</strong></li>";
+            Array.from(selectedNames).sort().forEach(function(nama) {
+                listHtml += "<li>" + nama + "</li>";
                 count++;
             });
             listHtml += "</ul>";
-
-            divList.innerHTML = (count === 0) ? "<em>Belum ada wilayah dipilih</em>" : listHtml;
+            divList.innerHTML = (count === 0) ? "<em>Belum ada</em>" : listHtml;
         }
 
         // --- 4. FITUR SEARCH ---
@@ -269,35 +330,28 @@
         searchBox.addEventListener('keyup', function(e) {
             var keyword = e.target.value.toLowerCase();
             resultsBox.innerHTML = "";
-            
-            if (keyword.length < 3) { 
-                resultsBox.style.display = 'none'; return;
-            }
+            if (keyword.length < 3) { resultsBox.style.display = 'none'; return; }
 
-            // Filter: Bukan Luar Negeri AND Bukan "Tanpa Nama"
             var uniqueNames = [...new Set(allFeaturesData
                 .filter(f => !isLuarNegeri(f) && getNamaWilayah(f) !== "Tanpa Nama")
                 .map(f => getNamaWilayah(f)))];
-
             var matches = uniqueNames.filter(name => name.toLowerCase().includes(keyword));
 
             if (matches.length > 0) {
                 resultsBox.style.display = 'block';
                 matches.slice(0, 10).forEach(nama => { 
-                    var li = document.createElement('li');
-                    li.textContent = nama;
+                    var li = document.createElement('li'); li.textContent = nama;
                     li.onclick = function() { pilihDariSearch(nama); };
                     resultsBox.appendChild(li);
                 });
-            } else {
-                resultsBox.style.display = 'none';
-            }
+            } else { resultsBox.style.display = 'none'; }
         });
 
         function pilihDariSearch(namaTarget) {
             selectedNames.add(namaTarget);
             updateMapStyle();
-
+            
+            // Auto Zoom ke lokasi
             var groupBounds = L.latLngBounds([]);
             var found = false;
             geojsonLayer.eachLayer(function(layer) {
@@ -306,22 +360,44 @@
                     found = true;
                 }
             });
-            if (found) { map.fitBounds(groupBounds, { padding: [50, 50] }); }
+            if (found) { map.fitBounds(groupBounds, { padding: [20, 20] }); }
             
-            searchBox.value = "";
-            resultsBox.style.display = 'none';
+            searchBox.value = ""; resultsBox.style.display = 'none';
         }
-        
-        document.addEventListener('click', function(e) {
-            if (e.target !== searchBox && e.target !== resultsBox) {
-                resultsBox.style.display = 'none';
-            }
-        });
 
-        // --- 5. LOAD DATA ---
+        // --- 5. FUNGSI DOWNLOAD GAMBAR ---
+        function downloadImage() {
+            var element = document.getElementById("poster-canvas");
+            
+            // Ubah tombol jadi 'Loading...'
+            var btn = document.querySelector('.btn-download');
+            var oriText = btn.innerText;
+            btn.innerText = "⏳ Sedang Memproses...";
+            
+            // Gunakan html2canvas
+            // Scale 2 artinya kita ambil resolusi 2x lipat dari tampilan layar (Retina quality)
+            // Tampilan layar 540x675 -> Output 1080x1350
+            html2canvas(element, {
+                scale: 2, 
+                useCORS: true, // Penting agar peta tidak blank
+                allowTaint: true
+            }).then(canvas => {
+                var link = document.createElement('a');
+                link.download = 'Peringatan_Banjir_Rob.png';
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+                
+                btn.innerText = oriText; // Balikin tombol
+            }).catch(err => {
+                console.error(err);
+                alert("Gagal generate gambar. Coba refresh browser.");
+                btn.innerText = oriText;
+            });
+        }
+
+        // --- 6. LOAD DATA ---
         function onEachFeature(feature, layer) {
             var nama = getNamaWilayah(feature);
-            // Hanya bisa diklik jika BUKAN luar negeri dan BUKAN tanpa nama
             if (!isLuarNegeri(feature) && nama !== "Tanpa Nama") {
                 layer.on({ click: saatDiklik });
             }
@@ -331,6 +407,11 @@
             selectedNames.clear();
             updateMapStyle();
             map.setView([-2.5489, 118.0149], 5);
+            // Reset input form
+            document.getElementById('fenomena-1').value = "";
+            document.getElementById('fenomena-2').value = "";
+            document.getElementById('waktu-fenomena').value = "";
+            updatePosterText();
         }
 
         fetch('IdKabupaten.json')
