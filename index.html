@@ -350,10 +350,10 @@
             map.invalidateSize();
             
             // Optional: Jika ingin otomatis zoom fit saat preview, nyalakan ini:
-            if(selectedNames.size > 0) {
-            var groupBounds = L.latLngBounds([]);
-            geojsonLayer.eachLayer(l => { if(selectedNames.has(getNamaWilayah(l.feature))) groupBounds.extend(l.getBounds()); });
-            map.fitBounds(groupBounds, {padding: [10,10]});
+            // if(selectedNames.size > 0) {
+            //     var groupBounds = L.latLngBounds([]);
+            //     geojsonLayer.eachLayer(l => { if(selectedNames.has(getNamaWilayah(l.feature))) groupBounds.extend(l.getBounds()); });
+            //     map.fitBounds(groupBounds, {padding: [10,10]});
             // }
 
             // 4. Tampilkan Modal
