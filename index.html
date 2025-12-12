@@ -11,20 +11,17 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
         
-        /* --- 1. LAYOUT UTAMA --- */
+        /* --- LAYOUT UTAMA --- */
         #main-wrapper { display: flex; height: 100vh; position: relative; }
 
-        /* PETA UTAMA (WORK AREA) */
+        /* PETA KERJA */
         #map-work { 
-            flex-grow: 1; 
-            height: 100%; 
-            background-color: #29509e; /* Warna Laut (Hex #29509e) */
-            z-index: 1;
+            flex-grow: 1; height: 100%; background-color: #29509e; z-index: 1;
         }
 
-        /* SIDEBAR / CONTROL PANEL */
+        /* SIDEBAR */
         .sidebar {
-            width: 320px;
+            width: 340px; /* Sedikit diperlebar agar judul muat */
             background: #ffffff;
             border-right: 1px solid #ddd;
             display: flex;
@@ -34,145 +31,135 @@
             box-shadow: 2px 0 10px rgba(0,0,0,0.1);
         }
         
-        /* Mode Minimize Sidebar */
-        .sidebar.collapsed { width: 40px; }
-        .sidebar.collapsed .sidebar-content { display: none; }
+        /* LOGIC MINIMIZE (FIX 1.a) */
+        .sidebar.collapsed { width: 50px; }
+        .sidebar.collapsed .sidebar-app-title,
+        .sidebar.collapsed .sidebar-header h3,
+        .sidebar.collapsed .sidebar-content,
+        .sidebar.collapsed .sidebar-footer { display: none; } /* Semua elemen dalam hilang kecuali tombol toggle */
         .sidebar.collapsed .toggle-btn i { transform: rotate(180deg); }
+        .sidebar.collapsed .sidebar-header { justify-content: center; padding: 15px 0; }
 
-        /* Header Sidebar */
-        .sidebar-header {
+        /* Judul Aplikasi (FIX 1.b) */
+        .sidebar-app-title {
+            background: #0d104f;
+            color: white;
             padding: 15px;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 1.4;
+            border-bottom: 3px solid #e74c3c;
+        }
+
+        .sidebar-header {
+            padding: 10px 15px;
             background: #f8f9fa;
             border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            display: flex; justify-content: space-between; align-items: center;
         }
-        .sidebar-header h3 { margin: 0; font-size: 16px; color: #333; font-weight: bold; white-space: nowrap; }
+        .sidebar-header h3 { margin: 0; font-size: 14px; color: #555; font-weight: bold; text-transform: uppercase; }
         
-        .toggle-btn {
-            background: none; border: none; cursor: pointer; color: #555; padding: 5px;
-        }
+        .toggle-btn { background: none; border: none; cursor: pointer; color: #555; padding: 5px; font-size: 16px; }
 
-        /* Konten Sidebar (Scrollable) */
-        .sidebar-content {
-            padding: 15px;
-            overflow-y: auto;
-            flex-grow: 1;
-        }
+        .sidebar-content { padding: 15px; overflow-y: auto; flex-grow: 1; }
+        .sidebar-footer { padding: 15px; border-top: 1px solid #eee; background: #fff; }
 
-        /* Footer Sidebar (Tombol Aksi) */
-        .sidebar-footer {
-            padding: 15px;
-            border-top: 1px solid #eee;
-            background: #fff;
-        }
-
-        /* Input Styling */
-        .input-group { margin-bottom: 15px; }
-        label { font-size: 12px; font-weight: bold; color: #555; display: block; margin-bottom: 5px; }
+        /* INPUT STYLES */
+        .input-group { margin-bottom: 12px; }
+        label { font-size: 11px; font-weight: bold; color: #555; display: block; margin-bottom: 4px; }
         select, input[type="text"], input[type="date"] {
-            width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px;
+            width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 12px;
         }
-        
         .row-inputs { display: flex; gap: 5px; align-items: center; }
         
-        /* Search Result */
+        /* Search */
         #search-results {
             list-style: none; padding: 0; margin: 0; max-height: 100px; overflow-y: auto;
             border: 1px solid #eee; display: none; background: white;
         }
-        #search-results li { padding: 6px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px; }
+        #search-results li { padding: 6px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 11px; }
         #search-results li:hover { background: #f0f0f0; }
+        
+        .mini-list { font-size: 11px; height: 80px; overflow-y: auto; border: 1px solid #eee; padding: 5px; background: #fafafa; }
 
-        /* List Wilayah Kecil */
-        .mini-list { font-size: 11px; height: 100px; overflow-y: auto; border: 1px solid #eee; padding: 5px; margin-bottom: 10px; background: #fafafa; }
-
-        /* Tombol */
-        .btn {
-            border: none; padding: 10px; cursor: pointer; border-radius: 4px; width: 100%; font-weight: bold; color: white; margin-bottom: 8px; font-size: 14px;
-        }
+        /* BUTTONS */
+        .btn { border: none; padding: 10px; cursor: pointer; border-radius: 4px; width: 100%; font-weight: bold; color: white; margin-bottom: 8px; font-size: 13px; }
         .btn-reset { background: #e74c3c; }
         .btn-preview { background: #2980b9; margin-bottom: 0; }
         .btn-preview:hover { background: #3498db; }
 
-        /* --- 2. MODAL PREVIEW (POPUP) --- */
+        /* --- MODAL PREVIEW --- */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8); z-index: 2000;
             display: none; justify-content: center; align-items: center;
         }
         .modal-content {
-            background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 1200px;
-            display: flex; flex-direction: column; height: 90vh;
+            background: white; padding: 10px; border-radius: 8px; 
+            display: flex; flex-direction: column; align-items: center;
+            max-height: 95vh; overflow: hidden;
         }
-        .modal-header { font-weight: bold; font-size: 18px; margin-bottom: 15px; display: flex; justify-content: space-between; }
         .modal-body { 
-            flex-grow: 1; background: #333; overflow: auto; display: flex; justify-content: center; align-items: center; padding: 20px; border: 1px solid #ccc;
+            background: #333; overflow: auto; padding: 10px; border: 1px solid #ccc;
+            max-height: 80vh; /* Agar scrollable jika layar laptop kecil */
         }
-        .modal-footer { margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px; }
 
-        /* --- 3. TEMPLATE POSTER (YANG AKAN DICETAK) --- */
-        /* Ukuran Asli: 4320px x 1350px. 
-           Kita set CSS width lebih kecil (1440px) agar muat di preview, 
-           nanti saat download kita scale 3x (1440 x 3 = 4320). */
+        /* --- POSTER OUTPUT (1080 x 1350) --- */
+        /* Kita set ukuran display setengahnya (540x675) agar muat di layar */
+        /* Nanti saat download di-scale 2x jadi 1080x1350 */
         #poster-container {
-            width: 1440px; 
-            height: 450px; /* 1350 / 3 */
+            width: 540px;  
+            height: 675px; 
             position: relative;
             flex-shrink: 0;
-            /* Background Gradasi Linear 45 Derajat */
             background: linear-gradient(45deg, #070a5c, #060842);
             color: white;
             font-family: Arial, sans-serif;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            display: flex; flex-direction: column;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
-        /* Layout Poster */
         .poster-content {
-            padding: 20px 40px; /* Padding dikurangi karena height pendek */
+            padding: 20px 25px;
             text-align: center;
             z-index: 5;
-            position: relative;
         }
-
-        .poster-title { font-size: 28px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; color: #fff; letter-spacing: 1px; }
-        .poster-subtitle { font-size: 16px; margin-bottom: 5px; color: #aab7ff; }
+        .poster-title { font-size: 20px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; color: #fff; letter-spacing: 1px; border-bottom: 2px solid #f1c40f; padding-bottom: 8px; display: inline-block;}
+        .poster-subtitle { font-size: 13px; margin-top: 5px; margin-bottom: 5px; color: #aab7ff; font-weight: bold; }
         
         .poster-text-block {
             background: rgba(0,0,0,0.3);
-            border-left: 4px solid #f1c40f;
-            padding: 10px;
-            margin: 5px auto;
-            width: 80%;
-            font-size: 14px;
+            border-left: 3px solid #f1c40f;
+            padding: 8px 12px;
+            margin: 10px auto;
+            width: 90%;
+            font-size: 11px;
             line-height: 1.4;
             text-align: left;
         }
 
-        /* Container Peta di dalam Poster */
         #map-print-wrapper {
-            flex-grow: 1; /* Peta mengisi sisa ruang */
-            margin: 10px 40px;
+            flex-grow: 1;
+            margin: 0 25px 10px 25px;
             border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 8px;
+            border-radius: 4px;
             overflow: hidden;
             position: relative;
-            background: #29509e; /* Warna Laut di Poster */
+            background: #29509e;
         }
         #map-print { width: 100%; height: 100%; }
 
         .poster-footer {
-            padding: 10px;
-            background: rgba(0,0,0,0.4);
+            padding: 8px 20px;
+            background: rgba(0,0,0,0.5);
             text-align: center;
-            font-size: 14px;
+            font-size: 10px;
             font-weight: bold;
-            color: #f1c40f; /* Kuning Peringatan */
+            color: #f1c40f;
+            line-height: 1.3;
         }
-
     </style>
 </head>
 <body>
@@ -180,8 +167,12 @@
 <div id="main-wrapper">
     
     <div class="sidebar" id="sidebar">
+        <div class="sidebar-app-title">
+            GENERATOR PERINGATAN / REKAPITULASI<br>BANJIR ROB INDONESIA
+        </div>
+
         <div class="sidebar-header">
-            <h3 id="sidebar-title">Konfigurasi Peta</h3>
+            <h3 id="sidebar-sub-title">Konfigurasi Peta</h3>
             <button class="toggle-btn" onclick="toggleSidebar()" title="Minimize/Maximize">
                 <i class="fa-solid fa-chevron-left"></i>
             </button>
@@ -248,9 +239,9 @@
 
 <div class="modal-overlay" id="modal-preview">
     <div class="modal-content">
-        <div class="modal-header">
-            <span>Preview Gambar (1080 x 1350 px)</span>
-            <button onclick="tutupPreview()" style="border:none; background:none; cursor:pointer; font-size:20px;">&times;</button>
+        <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;">
+            <span style="font-weight:bold;">Preview Output (1080 x 1350 px)</span>
+            <button onclick="tutupPreview()" style="border:none; background:none; cursor:pointer; font-size:18px;">&times;</button>
         </div>
         
         <div class="modal-body">
@@ -274,10 +265,9 @@
             </div>
         </div>
 
-        <div class="modal-footer">
-            <button class="btn" style="background:#95a5a6; width:auto;" onclick="tutupPreview()">Batal</button>
-            <button class="btn" style="background:#27ae60; width:auto;" onclick="downloadHighRes()">
-                <i class="fa-solid fa-download"></i> Download High Res (.PNG)
+        <div style="margin-top:10px; width:100%;">
+            <button class="btn" style="background:#27ae60;" onclick="downloadImage()">
+                <i class="fa-solid fa-download"></i> Download Gambar (.PNG)
             </button>
         </div>
     </div>
@@ -288,71 +278,44 @@
 
 <script>
     // --- KONFIGURASI DATA ---
-    // Ganti dengan nama file GeoJSON kamu
     const GEOJSON_FILE = 'IdKabupaten.json'; 
     const HEX_LAUT = '#29509e';
     const HEX_DARAT = '#52b04c';
     const HEX_PILIH = '#c41414';
-    const HEX_ABU = '#bdc3c7'; // Untuk wilayah tanpa nama
+    const HEX_ABU = '#bdc3c7'; 
 
-    // Variabel Global
-    var mapWork, mapPrint; // Dua peta berbeda
+    var mapWork, mapPrint; 
     var geojsonLayerWork, geojsonLayerPrint; 
-    var rawGeoData = null; // Menyimpan data mentah
-    var selectedNames = new Set(); // Menyimpan nama unik yang dipilih
+    var rawGeoData = null; 
+    var selectedNames = new Set(); 
 
-    // --- SETUP TANGGAL DEFAULT ---
+    // Date Setup
     var today = new Date();
     var tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
     document.getElementById('tgl-mulai').valueAsDate = today;
     document.getElementById('tgl-selesai').valueAsDate = tomorrow;
 
-    // ==========================================
-    // BAGIAN 1: PETA KERJA (WORK MAP)
-    // ==========================================
-    
-    // Inisialisasi Peta Kerja
+    // --- PETA KERJA (WORK) ---
     mapWork = L.map('map-work', { zoomControl: false, attributionControl: false }).setView([-2.5, 118], 5);
     L.control.zoom({ position: 'topright' }).addTo(mapWork);
 
-    // Style Function
     function getStyle(feature, isPrint = false) {
         var nama = getNamaWilayah(feature);
-        
-        // 2.e Area Tanpa Nama (Luar Negeri/Invalid)
-        if (nama === "Tanpa Nama") {
-            return { fillColor: HEX_ABU, weight: 0.5, color: HEX_LAUT, fillOpacity: 1, interactive: false };
-        }
-        
-        // 2.d Area Terpilih
-        if (selectedNames.has(nama)) {
-            return { fillColor: HEX_PILIH, weight: 1, color: 'white', fillOpacity: 1 };
-        }
-
-        // 2.d Daratan Biasa
+        if (nama === "Tanpa Nama") return { fillColor: HEX_ABU, weight: 0.5, color: HEX_LAUT, fillOpacity: 1, interactive: false };
+        if (selectedNames.has(nama)) return { fillColor: HEX_PILIH, weight: 1, color: 'white', fillOpacity: 1 };
         return { fillColor: HEX_DARAT, weight: 0.5, color: HEX_LAUT, fillOpacity: 1 };
     }
 
-    // Helper: Ambil Nama
     function getNamaWilayah(feature) {
         var p = feature.properties;
         var nama = p.KABUPATEN || p.WADMKK || p.NAMOBJ || p.NAME_2 || p.Name;
         return (!nama || nama.trim() === "") ? "Tanpa Nama" : nama;
     }
 
-    // Interaksi Klik
     function onFeatureClick(e) {
         var nama = getNamaWilayah(e.target.feature);
         if (nama === "Tanpa Nama") return;
-
-        // 2.c Pilih Group (Toggle)
-        if (selectedNames.has(nama)) {
-            selectedNames.delete(nama);
-        } else {
-            selectedNames.add(nama);
-        }
-        
-        // Refresh Tampilan Peta Kerja
+        selectedNames.has(nama) ? selectedNames.delete(nama) : selectedNames.add(nama);
         geojsonLayerWork.setStyle(f => getStyle(f, false));
         updateListPanel();
     }
@@ -360,51 +323,28 @@
     function updateListPanel() {
         var divList = document.getElementById('list-wilayah');
         var namesArr = Array.from(selectedNames).sort();
-        if (namesArr.length === 0) {
-            divList.innerHTML = "<em>Belum ada</em>";
-            return;
-        }
-        divList.innerHTML = "<ul>" + namesArr.map(n => `<li>${n}</li>`).join('') + "</ul>";
+        divList.innerHTML = namesArr.length === 0 ? "<em>Belum ada</em>" : "<ul>" + namesArr.map(n => `<li>${n}</li>`).join('') + "</ul>";
     }
 
-    // Load Data Utama
     fetch(GEOJSON_FILE)
         .then(res => res.json())
         .then(data => {
-            rawGeoData = data; // Simpan data mentah untuk peta print nanti
-            
-            // Render ke Peta Kerja
+            rawGeoData = data; 
             geojsonLayerWork = L.geoJson(data, {
                 style: f => getStyle(f, false),
                 onEachFeature: (f, l) => {
-                    if (getNamaWilayah(f) !== "Tanpa Nama") {
-                        l.on('click', onFeatureClick);
-                    }
+                    if (getNamaWilayah(f) !== "Tanpa Nama") l.on('click', onFeatureClick);
                 }
             }).addTo(mapWork);
-            
             mapWork.fitBounds(geojsonLayerWork.getBounds());
         })
-        .catch(err => alert("Gagal memuat GeoJSON. Pastikan file ada."));
+        .catch(err => alert("Gagal memuat GeoJSON."));
 
 
-    // ==========================================
-    // BAGIAN 2: LOGIKA UI & SIDEBAR
-    // ==========================================
-
-    // 1.d Toggle Sidebar
+    // --- UI LOGIC ---
     function toggleSidebar() {
         var sb = document.getElementById('sidebar');
-        var title = document.getElementById('sidebar-title');
         sb.classList.toggle('collapsed');
-        
-        if(sb.classList.contains('collapsed')) {
-            title.style.display = 'none';
-        } else {
-            setTimeout(() => title.style.display = 'block', 200);
-        }
-        
-        // Resize map agar tidak gepeng
         setTimeout(() => mapWork.invalidateSize(), 300);
     }
 
@@ -415,7 +355,6 @@
         mapWork.fitBounds(geojsonLayerWork.getBounds());
     }
 
-    // Fitur Pencarian
     var searchBox = document.getElementById('search-box');
     var resultsBox = document.getElementById('search-results');
     
@@ -432,19 +371,15 @@
         if(matches.length > 0) {
             resultsBox.style.display = 'block';
             matches.forEach(name => {
-                var li = document.createElement('li');
-                li.textContent = name;
+                var li = document.createElement('li'); li.textContent = name;
                 li.onclick = () => {
-                    selectedNames.add(name); // Auto select
+                    selectedNames.add(name); 
                     geojsonLayerWork.setStyle(f => getStyle(f, false));
                     updateListPanel();
-                    // Zoom ke lokasi
                     var feats = rawGeoData.features.filter(f => getNamaWilayah(f) === name);
-                    // Cara bodoh tapi ampuh cari bounds: buat temp layer
                     var tempL = L.geoJson(feats);
                     mapWork.fitBounds(tempL.getBounds());
-                    searchBox.value = "";
-                    resultsBox.style.display = 'none';
+                    searchBox.value = ""; resultsBox.style.display = 'none';
                 };
                 resultsBox.appendChild(li);
             });
@@ -452,17 +387,13 @@
     });
 
 
-    // ==========================================
-    // BAGIAN 3: GENERATOR GAMBAR (PREVIEW & PRINT)
-    // ==========================================
-
+    // --- PREVIEW & PRINT ---
     function formatTanggal(d) {
-        if(!d) return "...";
-        return new Date(d).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+        return d ? new Date(d).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'}) : "...";
     }
 
     function bukaPreview() {
-        // 1. Isi Teks Berdasarkan Input
+        // Isi Teks
         var jenis = document.getElementById('jenis-peta').value;
         var tgl1 = formatTanggal(document.getElementById('tgl-mulai').value);
         var tgl2 = formatTanggal(document.getElementById('tgl-selesai').value);
@@ -470,55 +401,42 @@
         var fen2 = document.getElementById('fenomena-2').value;
         var logic = document.getElementById('logic-fenomena').value;
         var waktuKejadian = document.getElementById('waktu-fenomena').value || "-";
+        var fenText = fen1 + (fen2 && fen2.trim() !== "" ? ` ${logic} ${fen2}` : "");
 
-        // Logic Fenomena text
-        var fenText = fen1;
-        if(fen2 && fen2.trim() !== "") fenText += ` ${logic} ${fen2}`;
-
-        // Masukkan ke DOM Poster
         document.getElementById('out-judul').innerText = jenis;
         document.getElementById('out-tanggal').innerText = `Tanggal: ${tgl1} - ${tgl2}`;
-        
-        // 3.4 Narasi Sesuai Request
-        var narasi = `Adanya ${fenText} pada tanggal ${waktuKejadian} berpotensi meningkatkan ketinggian air laut maksimum. Berdasarkan pantauan data water level dan prediksi pasang surut, banjir pesisir (rob) berpotensi terjadi di beberapa wilayah pesisir Indonesia.`;
-        document.getElementById('out-narasi').innerText = narasi;
+        document.getElementById('out-narasi').innerText = `Adanya ${fenText} pada tanggal ${waktuKejadian} berpotensi meningkatkan ketinggian air laut maksimum. Berdasarkan pantauan data water level dan prediksi pasang surut, banjir pesisir (rob) berpotensi terjadi di beberapa wilayah pesisir Indonesia.`;
 
-        // 2. Buka Modal
         document.getElementById('modal-preview').style.display = 'flex';
 
-        // 3. RENDER PETA CETAK (MAP PRINT)
-        // Kita inisialisasi peta baru KHUSUS untuk cetak agar bisa diatur view-nya
+        // Initialize Map Print (FIX 2.a: STATIC / TIDAK BERGERAK)
         if (!mapPrint) {
             mapPrint = L.map('map-print', { 
                 zoomControl: false, 
                 attributionControl: false,
-                preferCanvas: true // Render lebih cepat
+                dragging: false,      // User gabisa geser
+                scrollWheelZoom: false, // Gabisa scroll
+                doubleClickZoom: false,
+                boxZoom: false,
+                keyboard: false
             });
         }
         
-        // Bersihkan layer lama di peta print
-        mapPrint.eachLayer(function (layer) { mapPrint.removeLayer(layer); });
+        mapPrint.eachLayer(l => mapPrint.removeLayer(l));
 
-        // Tambahkan data GeoJSON yang sama, tapi style mengikuti seleksi saat ini
         if (rawGeoData) {
             geojsonLayerPrint = L.geoJson(rawGeoData, {
-                style: f => getStyle(f, true) // Gunakan style yang sama
+                style: f => getStyle(f, true)
             }).addTo(mapPrint);
 
-            // 3.c Peta Seluruh Wilayah + Zoom
-            // Kita coba fitBounds ke wilayah yang dipilih user.
-            // Kalau user tidak pilih apapun, fitBounds ke seluruh Indonesia.
             if (selectedNames.size > 0) {
-                // Cari bounds dari area terpilih saja
                 var selectedFeatures = rawGeoData.features.filter(f => selectedNames.has(getNamaWilayah(f)));
                 var tempLayer = L.geoJson(selectedFeatures);
-                mapPrint.fitBounds(tempLayer.getBounds(), { padding: [20, 20] });
+                mapPrint.fitBounds(tempLayer.getBounds(), { padding: [10, 10] });
             } else {
                 mapPrint.fitBounds(geojsonLayerPrint.getBounds());
             }
         }
-        
-        // Force refresh size karena div-nya baru muncul
         setTimeout(() => mapPrint.invalidateSize(), 200);
     }
 
@@ -526,25 +444,21 @@
         document.getElementById('modal-preview').style.display = 'none';
     }
 
-    // 3.b DOWNLOAD HIGH RES (4320 x 1350)
-    function downloadHighRes() {
+    // FIX 2.b: Download 1080x1350
+    function downloadImage() {
         var el = document.getElementById('poster-container');
-        var btn = document.querySelector('.modal-footer .btn:last-child');
+        var btn = document.querySelector('.modal-content .btn');
         var oriText = btn.innerHTML;
         btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Rendering...";
 
-        // Logika Scaling:
-        // Container width CSS = 1440px.
-        // Target width = 4320px.
-        // Scale factor = 4320 / 1440 = 3.
-        
+        // Scale 2 pada base 540x675 akan menghasilkan 1080x1350
         html2canvas(el, {
-            scale: 3, 
+            scale: 2, 
             useCORS: true,
             allowTaint: true
         }).then(canvas => {
             var link = document.createElement('a');
-            link.download = 'Peta_Banjir_Rob_HD.png';
+            link.download = 'Peringatan_Banjir_Rob.png';
             link.href = canvas.toDataURL("image/png");
             link.click();
             btn.innerHTML = oriText;
