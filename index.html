@@ -410,15 +410,20 @@
         document.getElementById('modal-preview').style.display = 'flex';
 
         // Initialize Map Print (FIX 2.a: STATIC / TIDAK BERGERAK)
+        // Initialize Map Print (STATIC TOTAL)
         if (!mapPrint) {
             mapPrint = L.map('map-print', { 
                 zoomControl: false, 
                 attributionControl: false,
-                dragging: false,      // User gabisa geser
-                scrollWheelZoom: false, // Gabisa scroll
-                doubleClickZoom: false,
-                boxZoom: false,
-                keyboard: false
+                
+                // --- KUNCI PETA AGAR TIDAK GERAK ---
+                dragging: false,         // Matikan geser mouse
+                scrollWheelZoom: false,  // Matikan scroll zoom
+                doubleClickZoom: false,  // Matikan zoom klik ganda
+                touchZoom: false,        // Matikan zoom cubit (touchscreen)
+                boxZoom: false,          // Matikan zoom kotak shift+drag
+                keyboard: false,         // Matikan kontrol keyboard
+                tap: false               // Matikan tap mobile
             });
         }
         
