@@ -437,7 +437,7 @@
             if (selectedNames.size > 0) {
                 var selectedFeatures = rawGeoData.features.filter(f => selectedNames.has(getNamaWilayah(f)));
                 var tempLayer = L.geoJson(selectedFeatures);
-                mapPrint.fitBounds(tempLayer.getBounds(), { padding: [10, 10] });
+                mapPrint.fitBounds(tempLayer.getBounds(), { paddingTopLeft: [100, 10], paddingBottomRight: [10,10] });
             } else {
                 mapPrint.fitBounds(geojsonLayerPrint.getBounds());
             }
